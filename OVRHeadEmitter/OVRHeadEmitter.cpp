@@ -44,14 +44,14 @@ public:
 		int newY = y * _precision;
 		int newZ = z * _precision;
 
-		bool result = newX == _x && newY == _y && newZ == _z;
+		bool different = newX != _x || newY != _y || newZ != _z;
 		
-		if (result) {
+		if (different) {
 			_x = newX;
 			_y = newY;
 			_z = newZ;
 		}
-		return result;
+		return different;
 	}
 
 private:
@@ -66,10 +66,8 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	System::Init(Log::ConfigureDefaultLog(LogMask_All));
 
-	
 	pManager = *DeviceManager::Create();
 	pHMD = *pManager->EnumerateDevices<HMDDevice>().CreateDevice();
-
 	
 	pSensor = *pHMD->GetSensor();
 	
@@ -85,7 +83,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) CtrlHandler, TRUE );
 
-	PrecisionTest test(3);
+	PrecisionTest test(2);
 
 	while (!done) {
 
@@ -99,8 +97,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		if (test.Test(pitch, yaw, roll)) {
 
-			cout << "Pitch: " << pitch << " Yaw: " << RadToDegree(yaw) << 
-				", Roll: " << RadToDegree(roll) << endl;
+			cout << "Pitch: " << RadToDegree(pitch) << " Yaw: " << RadToDegree(yaw) << 
+				" Roll: " << RadToDegree(roll) << endl;
 		}
 
 		Sleep(SampleMilliseconds);
