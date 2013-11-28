@@ -6,7 +6,11 @@
 
 #include <iostream>
 #include <cmath>
+#include <string>
 #include "OVR.h"
+#include "PrecisionTest.h"
+#include "OrientationReporter.h"
+
 using namespace std;
 using namespace OVR;
 
@@ -30,38 +34,6 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
 	return false;
 }
 
-class PrecisionTest
-{
-public:
-	PrecisionTest(int precision)
-	{
-		_precision = pow(10.0f, precision);
-	}
-
-	BOOL Test(float x, float y, float z)
-	{
-		int newX = x * _precision;
-		int newY = y * _precision;
-		int newZ = z * _precision;
-
-		bool different = newX != _x || newY != _y || newZ != _z;
-		
-		if (different) {
-			_x = newX;
-			_y = newY;
-			_z = newZ;
-		}
-		return different;
-	}
-
-private:
-	int _x;
-	int _y;
-	int _z;
-	int _precision;
-};
-
-
 int _tmain(int argc, _TCHAR* argv[])
 {
 	System::Init(Log::ConfigureDefaultLog(LogMask_All));
@@ -69,6 +41,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	pManager = *DeviceManager::Create();
 	pHMD = *pManager->EnumerateDevices<HMDDevice>().CreateDevice();
 	
+	if (!pHMD) {
+		cout << "Could not discover HMD." << endl;
+		cin.ignore();
+		exit(0);
+	}
+
+
 	pSensor = *pHMD->GetSensor();
 	
 	if (!pHMD && !pSensor) {
@@ -85,8 +64,21 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	PrecisionTest test(2);
 
-	while (!done) {
+	OrientationReporter reporter;
 
+	string input;
+	cout << "Enter the address (<addess>:<port>) of the gimbal endpoint: ";
+	cin >> input;
+
+	if (!reporter.Connect(input.c_str())) {
+		pSensor.Clear();
+		pHMD.Clear();
+		cout << "could not create curl object." << endl;
+		cin.ignore();
+		exit(0);
+	}
+
+	while (!done) {
 		Quatf orientation = sFusion.GetOrientation();
 
 		float yaw = 0.0f;
@@ -99,6 +91,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 			cout << "Pitch: " << RadToDegree(pitch) << " Yaw: " << RadToDegree(yaw) << 
 				" Roll: " << RadToDegree(roll) << endl;
+
+			reporter.Report(RadToDegree(pitch), RadToDegree(yaw));
 		}
 
 		Sleep(SampleMilliseconds);
@@ -106,6 +100,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	cout << "Resources released, press any key to exit." << endl;
 	cin.ignore();
+	pSensor.Clear();
+	pHMD.Clear();
 	return 0;
 }
 
